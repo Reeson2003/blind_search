@@ -16,11 +16,26 @@ public class PuzzleSolver {
         this.print = print;
     }
 
-    public Solution solve() throws SolutionNotAvailableException {
+    public Solution solve(boolean iterativeDepth) throws SolutionNotAvailableException {
         if (solution != null) {
             return solution;
         }
         Node node = new Node(null, problem.initialState, null, 0, 0);
+        Node solve = null;
+        if (iterativeDepth) {
+            solve = solveIterativeDepth(node);
+        } else {
+            solve = solveDepth(node);
+        }
+        solution = createSolution(solve);
+        return solution;
+    }
+
+    private Node solveDepth(Node parent) throws SolutionNotAvailableException {
+        return solve(parent, Integer.MAX_VALUE, Set.of(parent.state));
+    }
+
+    private Node solveIterativeDepth(Node parent) throws SolutionNotAvailableException {
         Node solve = null;
         int depth = 1;
         while (solve == null) {
@@ -28,13 +43,14 @@ public class PuzzleSolver {
                 if (print)
                     System.out.println("Solving with max depth: " + depth);
                 pause();
-                solve = solve(node, depth++, Set.of(node.state));
-            } catch (SolutionNotAvailableException ignored) {
+                solve = solve(parent, depth++, Set.of(parent.state));
+            } catch (SolutionNotAvailableException e) {
+                if (depth >= 100)
+                    throw e;
                 nodes = 0;
             }
         }
-        solution = createSolution(solve, depth);
-        return solution;
+        return solve;
     }
 
     private Node solve(Node parent, int maxDepth, Set<State> previousStates) throws SolutionNotAvailableException {
@@ -77,14 +93,14 @@ public class PuzzleSolver {
         }
     }
 
-    private Solution createSolution(Node node, int depth) {
+    private Solution createSolution(Node node) {
         Node parent = node;
         LinkedList<Action> actions = new LinkedList<>();
         while (parent.action != null) {
             actions.addFirst(parent.action);
             parent = parent.parentNode;
         }
-        return new Solution(actions, nodes, steps, depth);
+        return new Solution(actions, nodes, steps, actions.size());
     }
 
     private void pause() {
