@@ -15,16 +15,18 @@ public class Solution {
         this.depth = depth;
     }
 
-    public void print(State initial) {
+    public void print(State initial, boolean printSteps) {
         try {
             System.out.println("======FOUND SOLUTION=======");
             State state = initial;
-            for (Action action : actions) {
+            if (printSteps) {
+                for (Action action : actions) {
+                    System.out.println(state);
+                    System.out.println(action);
+                    state = action.perform(state);
+                }
                 System.out.println(state);
-                System.out.println(action);
-                state = action.perform(state);
             }
-            System.out.println(state);
             System.out.println("Total nodes: " + nodes);
             System.out.println("Total steps: " + steps);
             System.out.println("Total depth: " + depth);
