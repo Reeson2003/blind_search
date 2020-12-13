@@ -1,14 +1,15 @@
 package com.reeson2003.ai.puzzle;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
 
-public class PuzzleSolver {
-    private final Problem problem;
-    private final boolean stepByStep;
-    private final boolean print;
-    private Solution solution;
-    private long nodes = 0;
-    private long steps = 0;
+public abstract class PuzzleSolver {
+    protected final Problem problem;
+    protected final boolean stepByStep;
+    protected final boolean print;
+    protected long nodes = 0;
+    protected long steps = 0;
 
     public PuzzleSolver(Problem problem, boolean stepByStep, boolean print) {
         this.problem = problem;
@@ -16,65 +17,14 @@ public class PuzzleSolver {
         this.print = print;
     }
 
-    public Solution solve(boolean iterativeDepth) throws SolutionNotAvailableException {
-        if (solution != null) {
-            return solution;
-        }
-        Node node = new Node(null, problem.initialState, null, 0, 0);
-        Node solve = null;
-        if (iterativeDepth) {
-            solve = solveIterativeDepth(node);
-        } else {
-            solve = solveDepth(node);
-        }
-        solution = createSolution(solve);
-        return solution;
-    }
+    public abstract Solution solve() throws SolutionNotAvailableException;
 
-    private Node solveDepth(Node parent) throws SolutionNotAvailableException {
-        return solve(parent, Integer.MAX_VALUE, Set.of(parent.state));
-    }
-
-    private Node solveIterativeDepth(Node parent) throws SolutionNotAvailableException {
-        Node solve = null;
-        int depth = 1;
-        while (solve == null) {
-            try {
-                if (print)
-                    System.out.println("Solving with max depth: " + depth);
-                pause();
-                solve = solve(parent, depth++, Set.of(parent.state));
-            } catch (SolutionNotAvailableException e) {
-                if (depth >= 100)
-                    throw e;
-                nodes = 0;
-            }
-        }
-        return solve;
-    }
-
-    private Node solve(Node parent, int maxDepth, Set<State> previousStates) throws SolutionNotAvailableException {
+    protected Node solve(Node parent, int maxDepth, List<Node> visitedNodes) throws SolutionNotAvailableException {
         steps++;
         nodes++;
         boolean goalReached = problem.testGoal(parent.state);
-        List<Node> toExpand = new ArrayList<>();
-        List<State> visited = new ArrayList<>();
-        for (Action action : Action.values()) {
-            try {
-                State newState = action.perform(parent.state);
-                if (previousStates.contains(newState)) {
-                    visited.add(newState);
-                } else {
-                    toExpand.add(new Node(parent,
-                            newState,
-                            action,
-                            parent.depth + 1,
-                            parent.pathCost + 1));
-                }
-            } catch (ActionNotAvailableException ignored) {
-            }
-        }
-        printStep(goalReached, parent, toExpand, visited);
+        List<Node> toExpand = expandNodes(parent, visitedNodes);
+        printStep(goalReached, parent, toExpand);
         pause();
         if (goalReached) {
             return parent;
@@ -82,10 +32,10 @@ public class PuzzleSolver {
             throw new SolutionNotAvailableException();
         } else {
             for (Node node : toExpand) {
-                HashSet<State> newPreviousStates = new HashSet<>(previousStates);
-                newPreviousStates.add(node.state);
+//                List<Node> newVisitedNodes = new ArrayList<>(visitedNodes);
+                visitedNodes.add(node);
                 try {
-                    return solve(node, maxDepth - 1, newPreviousStates);
+                    return solve(node, maxDepth - 1, visitedNodes);
                 } catch (SolutionNotAvailableException ignored) {
                 }
             }
@@ -93,7 +43,25 @@ public class PuzzleSolver {
         }
     }
 
-    private Solution createSolution(Node node) {
+    private List<Node> expandNodes(Node parent, List<Node> visited) {
+        List<Node> expanded = new ArrayList<>();
+        for (Action action : Action.values()) {
+            try {
+                State newState = action.perform(parent.state);
+                expanded.add(new Node(parent,
+                        newState,
+                        action,
+                        parent.depth + 1,
+                        parent.pathCost + 1));
+            } catch (ActionNotAvailableException ignored) {
+            }
+        }
+        return composeNextNodes(expanded, visited);
+    }
+
+    protected abstract List<Node> composeNextNodes(List<Node> expanded, List<Node> visited);
+
+    protected Solution createSolution(Node node) {
         Node parent = node;
         LinkedList<Action> actions = new LinkedList<>();
         while (parent.action != null) {
@@ -103,13 +71,13 @@ public class PuzzleSolver {
         return new Solution(actions, nodes, steps, actions.size());
     }
 
-    private void pause() {
+    protected void pause() {
         if (stepByStep) {
             new java.util.Scanner(System.in).nextLine();
         }
     }
 
-    private void printStep(boolean goalReached, Node parent, List<Node> toExpand, List<State> visited) {
+    private void printStep(boolean goalReached, Node parent, List<Node> toExpand) {
         if (print) {
             StringBuilder sb = new StringBuilder();
             sb.append("Current state: ")
@@ -130,12 +98,6 @@ public class PuzzleSolver {
                         .append("\n");
                 toExpand.stream().map(node -> node.state)
                         .forEach(state -> sb.append(state).append("\n=======\n"));
-                sb.append("\n");
-            }
-            if (visited.size() > 0) {
-                sb.append("Visited nodes:")
-                        .append("\n");
-                visited.forEach(state -> sb.append(state).append("\n=======\n"));
                 sb.append("\n");
             }
             System.out.println(sb);
