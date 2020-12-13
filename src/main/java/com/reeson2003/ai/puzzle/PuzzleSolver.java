@@ -32,10 +32,10 @@ public abstract class PuzzleSolver {
             throw new SolutionNotAvailableException();
         } else {
             for (Node node : toExpand) {
-//                List<Node> newVisitedNodes = new ArrayList<>(visitedNodes);
-                visitedNodes.add(node);
+                List<Node> newVisitedNodes = new ArrayList<>(visitedNodes);
+                newVisitedNodes.add(node);
                 try {
-                    return solve(node, maxDepth - 1, visitedNodes);
+                    return solve(node, maxDepth - 1, newVisitedNodes);
                 } catch (SolutionNotAvailableException ignored) {
                 }
             }
